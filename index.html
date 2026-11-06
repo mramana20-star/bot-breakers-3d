@@ -870,7 +870,11 @@ function endGame(){
   document.getElementById("message").style.display="flex";
   document.getElementById("again").onclick=startGame;}
 
-document.getElementById("start").onclick=startGame;
+document.getElementById("message").addEventListener("click", () => {
+  if (document.getElementById("start")) {
+    startGame();
+  }
+});
 
 /* ---------- MAIN LOOP ---------- */
 
