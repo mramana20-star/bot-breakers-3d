@@ -938,6 +938,17 @@ window.addEventListener("resize",()=>{
   renderer.setSize(window.innerWidth,window.innerHeight);
 });
 </script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => console.log("BOT BREAKERS PWA ready!"))
+      .catch(error => console.error("Service worker error:", error));
+  });
+}
+</script>
+
 </body>
 </html>
       
