@@ -817,4 +817,127 @@ async function enterFullscreen(){
 
   try{
     if(screen.orientation?.lock){
+      await screen.orientation.lock("landscape");
+    }
+  }catch(e){
+    console.log("Orientation lock unavailable",e);
+  }
+}
+
+document.getElementById("fullscreen").onclick=enterFullscreen;
+
+/* ---------- GAME START / END ---------- */
+
+function startGame(){
+  document.getElementById("message").style.display="none";
+
+  robots.forEach((r,i)=>{
+    r.score=0;
+    r.x=i===0?0:(Math.random()-.5)*22;
+    r.y=2.1;
+    r.z=i===0?0:(Math.random()-.5)*22;
+    r.vx=0;r.vy=0;r.vz=0;
+    r.direction=0;r.renderDirection=0;
+    r.dashCooldown=0;
+    r.flying=true;
+  });
+
+  player.flying=true;
+  updateFlyButton();
+
+  for(const b of bolts)respawnBolt(b);
+
+  timeLeft=90;
+  gameRunning=true;
+
+  enterFullscreen();
+  updateScoreboard();
+}
+
+function endGame(){
+  gameRunning=false;
+
+  const sorted=[...robots].sort((a,b)=>b.score-a.score);
+  const rank=sorted.indexOf(player)+1;
+
+  document.getElementById("messageBox").innerHTML=`    <h1>MATCH OVER!</h1>
+    <p>Your score: <b>${player.score}</b></p>
+    <p>Your position: <b>${ordinal(rank)}</b></p>
+    <p>Winner: <b>${sorted[0].name}</b></p>
+    <button id="again">PLAY AGAIN</button>
+  `;
+
+  document.getElementById("message").style.display="flex";
+  document.getElementById("again").onclick=startGame;}
+
+document.getElementById("start").onclick=startGame;
+
+/* ---------- MAIN LOOP ---------- */
+
+let scoreboardTimer=0;
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  const dt=Math.min(clock.getDelta(),.04);
+  animationTime+=dt;
+
+  // Rotate and float energy bolts
+  for(const b of bolts){
+    if(!b.active)continue;
+    b.group.rotation.y+=dt*1.8;
+    b.group.position.y=b.y+Math.sin(animationTime*2+b.x)*.15;
+  }
+
+  if(gameRunning){
+    for(const r of robots){
+      updateRobot(r,dt);
+      animateRobot(r);
+    }
+
+    collectBolts();
+    updateCamera(dt);
+
+    timeLeft-=dt;
+    if(timeLeft<0)timeLeft=0;
+
+    document.getElementById("time").textContent=
+      Math.ceil(timeLeft);
+
+    scoreboardTimer+=dt;
+    if(scoreboardTimer>.2){
+      scoreboardTimer=0;
+      updateScoreboard();
+    }
+
+    if(timeLeft<=0)endGame();
+  }else{
+    // Camera preview before the match starts
+    camera.position.lerp(
+      new THREE.Vector3(0,10,17),.025
+    );
+    camera.lookAt(0,1,0);
+
+    for(const r of robots){
+      r.group.position.y=2.1+
+        Math.sin(animationTime*2+r.id)*.13;
+      animateRobot(r);
+    }
+  }
+
+  renderer.render(scene,camera);
+}
+
+animate();
+
+/* ---------- RESIZE ---------- */
+
+window.addEventListener("resize",()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+</script>
+</body>
+</html>
       
