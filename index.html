@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BOT BREAKERS 3D</title>
+<style>
+*{box-sizing:border-box}
+html,body{
+  margin:0;width:100%;height:100%;overflow:hidden;
+  background:#050817;color:white;
+  font-family:Arial,sans-serif;touch-action:none
+}
+canvas{display:block}
+button{
+  color:white;background:#173d67;border:2px solid #55dfff;
+  border-radius:12px;padding:10px 14px;font-weight:bold;
+  font-size:14px;touch-action:none
+}
+button:active{background:#1685a7}
+#topbar{
+  position:absolute;top:8px;left:8px;right:8px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:7px;z-index:5;pointer-events:none
+}
+#topbar>*{pointer-events:auto}
+.panel{
+  background:#07172ddd;border:1px solid #36c9ff;
+  border-radius:10px;padding:8px 11px;font-size:13px;
+  white-space:nowrap
+}
+#leaderboard{
+  position:absolute;right:9px;top:62px;z-index:4;
+  background:#07172dcc;border:1px solid #4bd9ff;
+  border-radius:10px;padding:9px 12px;
+  font-size:12px;min-width:125px;line-height:1.6
+}
+#leaderboard strong{color:#69eaff}
+#message{
+  position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;z-index:10;background:#020617bb;
+  padding:20px
+}
+#messageBox{
+  max-width:440px;width:100%;text-align:center;
+  background:linear-gradient(145deg,#102c55,#10132e);
+  border:2px solid #4bdfff;border-radius:20px;padding:25px;
+  box-shadow:0 0 35px #00bfff55
+}
+h1{font-size:clamp(28px,7vw,48px);margin:0 0 8px;color:#65eaff}
+#messageBox p{line-height:1.5;color:#d8eaff}
+#start{font-size:18px;padding:13px 30px;margin-top:10px}
+#mobileControls{display:none;position:absolute;inset:0;z-index:6;pointer-events:none}
+#joystick{
+  position:absolute;left:22px;bottom:25px;width:128px;height:128px;
+  border-radius:50%;border:2px solid #74eaff99;
+  background:#0d3b5c77;pointer-events:auto;touch-action:none
+}
+#stick{
+  position:absolute;left:39px;top:39px;width:48px;height:48px;
+  border-radius:50%;background:#57dfff;border:2px solid white;
+  box-shadow:0 0 15px #20cfff
+}
+#lookArea{
+  position:absolute;right:0;top:90px;bottom:160px;width:48%;
+  pointer-events:auto;touch-action:none
+}
+#flightButtons{
+  position:absolute;right:17px;bottom:22px;
+  display:flex;flex-direction:column;gap:8px;pointer-events:auto
+}
+#flightButtons button{width:55px;height:48px;padding:5px;font-size:19px}
+#fly{background:#176d55}
+#dash{background:#744a14}
+#portrait{
+  display:none;position:absolute;inset:0;z-index:20;
+  background:#050817;align-items:center;justify-content:center;
+  text-align:center;padding:25px;font-size:22px
+}
+@media(max-width:900px){
+  #mobileControls{display:block}
+  #leaderboard{top:59px}
+  #topbar{gap:4px}
+  .panel{padding:7px;font-size:11px}
+  #fullscreen{padding:7px;font-size:11px}
+}
+@media(max-width:700px) and (orientation:portrait){
+  #portrait{display:flex}
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="panel">⚡ SCORE: <span id="myScore">0</span></div>
+  <div class="panel">⏱️ <span id="time">90</span>s</div>
+  <div class="panel">🏆 <span id="rank">1st</span></div>
+  <button id="fullscreen">⛶ FULL</button>
+</div>
+
+<div id="leaderboard">
+  <strong>🏆 LEADERBOARD</strong>
+  <div id="leaderRows"></div>
+</div>
+
+<div id="mobileControls">
+  <div id="joystick"><div id="stick"></div></div>
+  <div id="lookArea"></div>
+  <div id="flightButtons">
+    <button id="fly">🛸</button>
+    <button id="rise">⬆</button>
+    <button id="descend">⬇</button>
+    <button id="dash">⚡</button>
+  </div>
+</div>
+
+<div id="portrait">📱<br><br>Please rotate your device to landscape mode.</div>
+
+<div id="message">
+  <div id="messageBox">
+    <h1>BOT BREAKERS 3D</h1>
+    <p>Collect energy bolts, outscore the other robots, and rule the arena!</p>
+    <p>
+      <b>PC:</b> WASD to move · Mouse drag to look<br>
+      F to fly · Space to rise · C to descend<br>
+      Shift to dash
+    </p>
+    <p>
+      <b>Mobile:</b> Joystick to move · Drag right side to look<br>
+      🛸 to toggle flying · ⬆ rise · ⬇ descend · ⚡ dash
+    </p>
+    <button id="start">START GAME</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+/* ---------- BASIC SETUP ---------- */
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050817);
+scene.fog = new THREE.Fog(0x050817, 35, 90);
+
+const camera = new THREE.PerspectiveCamera(
+  70, window.innerWidth/window.innerHeight, 0.1, 200
+);
+
+const renderer = new THREE.WebGLRenderer({
+  antialias:true,
+  powerPreference:"high-performance"
+});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.7));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0x9ddfff,0x18203e,2));
+
+const sun = new THREE.DirectionalLight(0xffffff,2.1);
+sun.position.set(12,25,10);
+sun.castShadow=true;
+scene.add(sun);
+
+const clock = new THREE.Clock();
+
+/* ---------- ARENA ---------- */
+
+const platforms=[];
+
+function makePlatform(x,y,z,w,d,color){
+  const mesh=new THREE.Mesh(
+    new THREE.BoxGeometry(w,0.8,d),
+    new THREE.MeshStandardMaterial({
+      color,metalness:.45,roughness:.35
+    })
+  );
+  mesh.position.set(x,y,z);
+  mesh.receiveShadow=true;
+  mesh.castShadow=true;
+  scene.add(mesh);
+
+  const edge=new THREE.Mesh(
+    new THREE.BoxGeometry(w+.15,.12,d+.15),
+    new THREE.MeshBasicMaterial({color:0x24cfff})
+  );
+  edge.position.set(x,y+.43,z);
+  scene.add(edge);
+
+  platforms.push({x,y:y+.4,z,w,d});
+}
+
+makePlatform(0,0,0,36,36,0x17294b);
+
+// Floating side platforms
+makePlatform(-24,-1,0,10,12,0x24304e);
+makePlatform(24,-1,0,10,12,0x24304e);
+makePlatform(0,-1,-24,12,10,0x24304e);
+makePlatform(0,-1,24,12,10,0x24304e);
+
+// Decorative arena pillars
+for(let i=0;i<12;i++){
+  const a=i*Math.PI/6;
+  const x=Math.cos(a)*19;
+  const z=Math.sin(a)*19;
+  const pillar=new THREE.Mesh(
+    new THREE.CylinderGeometry(.35,.6,5,8),
+    new THREE.MeshStandardMaterial({
+      color:0x176b9a,emissive:0x07334d
+    })
+  );
+  pillar.position.set(x,2,z);
+  scene.add(pillar);
+}
+
+// Stars
+const starGeometry=new THREE.BufferGeometry();
+const starPositions=[];
+for(let i=0;i<450;i++){
+  starPositions.push(
+    (Math.random()-.5)*150,
+    Math.random()*65+5,
+    (Math.random()-.5)*150
+  );
+}
+starGeometry.setAttribute(
+  "position",new THREE.Float32BufferAttribute(starPositions,3)
+);
+const stars=new THREE.Points(
+  starGeometry,
+  new THREE.PointsMaterial({color:0x9bdfff,size:.22})
+);
+scene.add(stars);
+
+/* ---------- ROBOTS ---------- */
+
+const robotColors=[
+  0x16c9ff,0xff4d65,0xffb52e,0x9c68ff,
+  0x41e58b,0xff65d2,0xe8f0ff,0xff7842
+];
+
+const robotNames=[
+  "YOU","BLITZ","NOVA","TITAN",
+  "PIXEL","VOLT","SHADOW","SPARK"
+];
+
+const robots=[];
+let player;
+let animationTime=0;
+
+function material(color,metalness=.5){
+  return new THREE.MeshStandardMaterial({
+    color,metalness,roughness:.3
+  });
+}
+
+function makeRobot(id){
+  const group=new THREE.Group();
+  scene.add(group);
+
+  const color=robotColors[id];
+  const mainMat=material(color,.65);
+  const darkMat=material(0x17243d,.7);
+  const glowMat=new THREE.MeshBasicMaterial({color:0x8df5ff});
+
+  const designs=[
+    "box","sphere","capsule","octa",
+    "cylinder","diamond","box","sphere"
+  ];
+
+  let bodyGeometry;
+  switch(designs[id]){
+    case "sphere":
+      bodyGeometry=new THREE.SphereGeometry(.65,18,14);
+      break;
+    case "capsule":
+      bodyGeometry=new THREE.CapsuleGeometry(.48,.55,5,10);
+      break;
+    case "octa":
+      bodyGeometry=new THREE.OctahedronGeometry(.72);
+      break;
+    case "cylinder":
+      bodyGeometry=new THREE.CylinderGeometry(.55,.65,.9,10);
+      break;
+    case "diamond":
+      bodyGeometry=new THREE.DodecahedronGeometry(.7);
+      break;
+    default:
+      bodyGeometry=new THREE.BoxGeometry(1.05,1, .85);
+  }
+
+  const body=new THREE.Mesh(bodyGeometry,mainMat);
+  body.position.y=1.35;
+  body.castShadow=true;
+  group.add(body);
+
+  const head=new THREE.Group();
+  head.position.set(0,2.05,0);
+  group.add(head);
+
+  const headMesh=new THREE.Mesh(
+    id%2===0
+      ? new THREE.BoxGeometry(.78,.55,.7)
+      : new THREE.SphereGeometry(.43,14,12),
+    darkMat
+  );
+  head.add(headMesh);
+
+  const eye1=new THREE.Mesh(
+    new THREE.BoxGeometry(.19,.12,.07),glowMat
+  );
+  eye1.position.set(-.19,.03,.36);
+  head.add(eye1);
+
+  const eye2=eye1.clone();
+  eye2.position.x=.19;
+  head.add(eye2);
+
+  const armPivots=[];
+  for(const side of [-1,1]){
+    const pivot=new THREE.Group();
+    pivot.position.set(side*.7,1.65,0);
+    group.add(pivot);
+
+    const arm=new THREE.Mesh(
+      new THREE.BoxGeometry(.24,.78,.3),mainMat
+    );
+    arm.position.y=-.35;
+    arm.castShadow=true;
+    pivot.add(arm);
+
+    const hand=new THREE.Mesh(
+      new THREE.SphereGeometry(.19,10,8),darkMat
+    );
+    hand.position.y=-.76;
+    pivot.add(hand);
+
+    armPivots.push(pivot);
+  }
+
+  // Hovering foot pods instead of walking legs
+  const pods=[];
+  for(const side of [-1,1]){
+    const pod=new THREE.Mesh(
+      new THREE.CylinderGeometry(.23,.28,.24,12),
+      darkMat
+    );
+    pod.position.set(side*.34,.55,0);
+    group.add(pod);
+    pods.push(pod);
+
+    const glow=new THREE.Mesh(
+      new THREE.CylinderGeometry(.18,.22,.05,12),
+      new THREE.MeshBasicMaterial({color:color})
+    );
+    glow.position.set(side*.34,.4,0);
+    group.add(glow);
+  }
+
+  const ring=new THREE.Mesh(
+    new THREE.TorusGeometry(.52,.045,8,24),
+    new THREE.MeshBasicMaterial({color})
+  );
+  ring.rotation.x=Math.PI/2;
+  ring.position.y=.25;
+  group.add(ring);
+
+  const r={
+    id,name:robotNames[id],group,body,head,
+    armPivots,pods,ring,
+    x:id===0?0:(Math.random()-.5)*22,
+    y:2.1,
+    z:id===0?0:(Math.random()-.5)*22,
+    vx:0,vz:0,vy:0,
+    direction:0,renderDirection:0,
+    score:0,
+    flying:true,
+    dashCooldown:0,
+    animationOffset:Math.random()*10,
+    aiTimer:0,
+    targetX:0,targetZ:0
+  };
+
+  group.position.set(r.x,r.y,r.z);
+  robots.push(r);
+  return r;
+}
+
+for(let i=0;i<8;i++) makeRobot(i);
+player=robots[0];
+
+/* ---------- ENERGY BOLTS ---------- */
+
+const bolts=[];
+const boltMaterial=new THREE.MeshStandardMaterial({
+  color:0x7fffff,
+  emissive:0x00bfff,
+  emissiveIntensity:2,
+  metalness:.5,
+  roughness:.2
+});
+
+function createBolt(){
+  const group=new THREE.Group();
+
+  const core=new THREE.Mesh(
+    new THREE.OctahedronGeometry(.35),
+    boltMaterial
+  );
+  group.add(core);
+
+  const ring=new THREE.Mesh(
+    new THREE.TorusGeometry(.48,.045,8,18),
+    new THREE.MeshBasicMaterial({color:0x65eaff})
+  );
+  ring.rotation.x=Math.PI/2;
+  group.add(ring);
+
+  const x=(Math.random()-.5)*30;
+  const z=(Math.random()-.5)*30;
+  const y=1.1+Math.random()*3;
+
+  group.position.set(x,y,z);
+  scene.add(group);
+
+  bolts.push({group,x,y,z,active:true});
+}
+
+for(let i=0;i<35;i++) createBolt();
+
+function respawnBolt(b){
+  b.x=(Math.random()-.5)*30;
+  b.z=(Math.random()-.5)*30;
+  b.y=1.1+Math.random()*3;
+  b.group.position.set(b.x,b.y,b.z);
+  b.active=true;
+  b.group.visible=true;
+}
+
+/* ---------- INPUT ---------- */
+
+const keys={};
+let joystickX=0,joystickY=0;
+let cameraYaw=0,cameraPitch=.3;
+let lookPointer=null;
+let lastLookX=0,lastLookY=0;
+let gameRunning=false;
+let timeLeft=90;
+let dashHeld=false;
+
+window.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  keys[k]=true;
+
+  if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(k)){
+    e.preventDefault();
+  }
+
+  if(k==="f"&&!e.repeat) toggleFlight();
+});
+
+window.addEventListener("keyup",e=>{
+  keys[e.key.toLowerCase()]=false;
+});
+
+function toggleFlight(){
+  player.flying=!player.flying;
+  player.vy=0;
+  updateFlyButton();
+}
+
+function updateFlyButton(){
+  const b=document.getElementById("fly");
+  b.style.background=player.flying?"#176d55":"#173d67";
+  b.textContent=player.flying?"🛸 ON":"🛸 OFF";
+}
+
+// Mobile joystick
+const joystick=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+let joystickPointer=null;
+
+function updateJoystick(e){
+  const rect=joystick.getBoundingClientRect();
+  const cx=rect.left+rect.width/2;
+  const cy=rect.top+rect.height/2;
+  let dx=e.clientX-cx;
+  let dy=e.clientY-cy;
+  const max=43;
+  const length=Math.hypot(dx,dy);
+
+  if(length>max){
+    dx=dx/length*max;
+    dy=dy/length*max;
+  }
+
+  joystickX=dx/max;
+  joystickY=dy/max;
+  stick.style.transform=`translate(${dx}px,${dy}px)`;
+}
+
+joystick.addEventListener("pointerdown",e=>{
+  joystickPointer=e.pointerId;
+  joystick.setPointerCapture(e.pointerId);
+  updateJoystick(e);
+});
+
+joystick.addEventListener("pointermove",e=>{
+  if(e.pointerId===joystickPointer)updateJoystick(e);
+});
+
+function releaseJoystick(){
+  joystickPointer=null;
+  joystickX=0;
+  joystickY=0;
+  stick.style.transform="translate(0px,0px)";
+}
+joystick.addEventListener("pointerup",releaseJoystick);
+joystick.addEventListener("pointercancel",releaseJoystick);
+
+// Camera drag area
+const lookArea=document.getElementById("lookArea");
+
+function startLook(e){
+  lookPointer=e.pointerId;
+  lastLookX=e.clientX;
+  lastLookY=e.clientY;
+  lookArea.setPointerCapture(e.pointerId);
+}
+function moveLook(e){
+  if(e.pointerId!==lookPointer)return;
+  const dx=e.clientX-lastLookX;
+  const dy=e.clientY-lastLookY;
+  lastLookX=e.clientX;
+  lastLookY=e.clientY;
+
+  cameraYaw-=dx*.009;
+  cameraPitch+=dy*.006;
+  cameraPitch=Math.max(-.15,Math.min(1.15,cameraPitch));
+}
+function endLook(e){
+  if(e.pointerId===lookPointer)lookPointer=null;
+}
+
+lookArea.addEventListener("pointerdown",startLook);
+lookArea.addEventListener("pointermove",moveLook);
+lookArea.addEventListener("pointerup",endLook);
+lookArea.addEventListener("pointercancel",endLook);
+
+// Desktop camera drag
+let mouseLooking=false;
+renderer.domElement.addEventListener("pointerdown",e=>{
+  if(e.pointerType==="mouse"){
+    mouseLooking=true;
+    lastLookX=e.clientX;
+    lastLookY=e.clientY;
+  }
+});
+window.addEventListener("pointermove",e=>{
+  if(!mouseLooking)return;
+  const dx=e.clientX-lastLookX;
+  const dy=e.clientY-lastLookY;
+  lastLookX=e.clientX;
+  lastLookY=e.clientY;
+  cameraYaw-=dx*.006;
+  cameraPitch+=dy*.004;
+  cameraPitch=Math.max(-.15,Math.min(1.15,cameraPitch));
+});
+window.addEventListener("pointerup",()=>mouseLooking=false);
+
+// Flight buttons
+document.getElementById("fly").onclick=toggleFlight;
+
+function holdButton(id,key){
+  const b=document.getElementById(id);
+  b.addEventListener("pointerdown",e=>{
+    e.preventDefault();
+    keys[key]=true;
+    b.setPointerCapture(e.pointerId);
+  });
+  const release=()=>keys[key]=false;
+  b.addEventListener("pointerup",release);
+  b.addEventListener("pointercancel",release);
+  b.addEventListener("lostpointercapture",release);
+}
+
+holdButton("rise","rise");
+holdButton("descend","descend");
+holdButton("dash","dash");
+
+/* ---------- MOVEMENT ---------- */
+
+function playerMovement(dt){
+  let forward=0,side=0;
+
+  if(keys.w||keys.arrowup)forward+=1;
+  if(keys.s||keys.arrowdown)forward-=1;
+  if(keys.a||keys.arrowleft)side-=1;
+  if(keys.d||keys.arrowright)side+=1;
+
+  forward+=-joystickY;
+  side+=joystickX;
+
+  const length=Math.hypot(forward,side);
+  if(length>1){
+    forward/=length;
+    side/=length;
+  }
+
+  // Movement relative to the camera
+  const sin=Math.sin(cameraYaw);
+  const cos=Math.cos(cameraYaw);
+
+  const moveX=side*cos+forward*sin;
+  const moveZ=-side*sin+forward*cos;
+
+  const speed=(keys.shift||keys.dash)?15:8;
+
+  if((keys.shift||keys.dash)&&player.dashCooldown<=0){
+    player.dashCooldown=.7;
+  }
+
+  const boost=(keys.shift||keys.dash)&&player.dashCooldown>.5?1.8:1;
+
+  player.vx=moveX*speed*boost;
+  player.vz=moveZ*speed*boost;
+
+  if(Math.hypot(moveX,moveZ)>.1){
+    player.direction=Math.atan2(moveX,moveZ);
+  }
+
+  if(player.flying){
+    if(keys[" "]||keys.rise)player.vy=5;
+    else if(keys.c||keys.descend)player.vy=-5;
+    else player.vy=0;
+  }else{
+    player.vy=0;
+  }
+
+  if(player.dashCooldown>0)player.dashCooldown-=dt;
+}
+
+function botMovement(r,dt){
+  r.aiTimer-=dt;
+
+  if(r.aiTimer<=0){
+    r.aiTimer=.5+Math.random()*1.3;
+
+    // Bots look for the nearest available bolt
+    let nearest=null;
+    let best=Infinity;
+    for(const b of bolts){
+      if(!b.active)continue;
+      const d=(b.x-r.x)**2+(b.z-r.z)**2;
+      if(d<best){best=d;nearest=b;}
+    }
+
+    if(nearest){
+      r.targetX=nearest.x;
+      r.targetZ=nearest.z;
+    }else{
+      r.targetX=(Math.random()-.5)*28;
+      r.targetZ=(Math.random()-.5)*28;
+    }
+  }
+
+  const dx=r.targetX-r.x;
+  const dz=r.targetZ-r.z;
+  const d=Math.hypot(dx,dz);
+
+  if(d>.5){
+    r.vx=dx/d*5.5;
+    r.vz=dz/d*5.5;
+    r.direction=Math.atan2(r.vx,r.vz);
+  }else{
+    r.vx=0;
+    r.vz=0;
+  }
+
+  // Bots hover and occasionally change altitude
+  r.vy=Math.sin(animationTime*.9+r.id)*1.1;
+}
+
+function updateRobot(r,dt){
+  if(r===player)playerMovement(dt);
+  else botMovement(r,dt);
+
+  r.x+=r.vx*dt;
+  r.z+=r.vz*dt;
+  r.y+=r.vy*dt;
+
+  // Keep robots inside the arena
+  r.x=THREE.MathUtils.clamp(r.x,-16,16);
+  r.z=THREE.MathUtils.clamp(r.z,-16,16);
+  r.y=THREE.MathUtils.clamp(r.y,1.35,12);
+
+  // Smoothly rotate robots towards their movement direction
+  let difference=
+    (r.direction-r.renderDirection+Math.PI*3)%
+    (Math.PI*2)-Math.PI;
+
+  r.renderDirection+=difference*Math.min(1,dt*10);
+
+  // Hovering animation
+  const hover=Math.sin(animationTime*2.5+r.id)*.13;
+  r.group.position.set(r.x,r.y+hover,r.z);
+  r.group.rotation.y=r.renderDirection;
+}
+
+function animateRobot(r){
+  const t=animationTime*2+r.animationOffset;
+
+  // Arms float gently instead of swinging like walking arms
+  r.armPivots[0].rotation.x=Math.sin(t)*.12;
+  r.armPivots[1].rotation.x=Math.cos(t)*.12;
+  r.armPivots[0].rotation.z=.08;
+  r.armPivots[1].rotation.z=-.08;
+
+  r.body.rotation.z=Math.sin(t*.7)*.035;
+  r.body.rotation.x=Math.cos(t*.6)*.025;
+  r.head.rotation.y=Math.sin(t*.4)*.06;
+
+  r.ring.rotation.z=animationTime*.8+r.id;
+  r.pods.forEach((pod,i)=>{
+    pod.position.y=.55+Math.sin(t+i)*.035;
+  });
+}
+
+/* ---------- COLLECTION ---------- */
+
+function collectBolts(){
+  for(const b of bolts){
+    if(!b.active)continue;
+
+    for(const r of robots){
+      const distance=Math.hypot(
+        r.x-b.x,
+        r.y-b.y,
+        r.z-b.z
+      );
+
+      if(distance<1.25){
+        r.score+=10;
+        b.active=false;
+        b.group.visible=false;
+        setTimeout(()=>respawnBolt(b),700);
+        break;
+      }
+    }
+  }
+}
+
+/* ---------- CAMERA ---------- */
+
+const cameraTarget=new THREE.Vector3();
+
+function updateCamera(dt){
+  const horizontal=9;
+  const height=3.2+cameraPitch*7;
+
+  const desiredX=player.x+Math.sin(cameraYaw)*horizontal;
+  const desiredZ=player.z+Math.cos(cameraYaw)*horizontal;
+  const desiredY=player.y+height;
+
+  const smoothing=1-Math.pow(.001,dt);
+
+  camera.position.x=THREE.MathUtils.lerp(
+    camera.position.x,desiredX,smoothing
+  );
+  camera.position.y=THREE.MathUtils.lerp(
+    camera.position.y,desiredY,smoothing
+  );
+  camera.position.z=THREE.MathUtils.lerp(
+    camera.position.z,desiredZ,smoothing
+  );
+
+  cameraTarget.set(player.x,player.y+1.1,player.z);
+  camera.lookAt(cameraTarget);
+}
+
+/* ---------- SCOREBOARD ---------- */
+
+function ordinal(n){
+  if(n===1)return "1st";
+  if(n===2)return "2nd";
+  if(n===3)return "3rd";
+  return n+"th";
+}
+
+function updateScoreboard(){
+  const sorted=[...robots].sort((a,b)=>b.score-a.score);
+  const rank=sorted.indexOf(player)+1;
+
+  document.getElementById("myScore").textContent=player.score;
+  document.getElementById("rank").textContent=ordinal(rank);
+
+  document.getElementById("leaderRows").innerHTML=
+    sorted.slice(0,5).map((r,i)=>
+      `<div>${i+1}. ${r.name} — ${r.score}</div>`
+    ).join("");
+}
+
+/* ---------- FULLSCREEN ---------- */
+
+async function enterFullscreen(){
+  try{
+    if(!document.fullscreenElement){
+      await document.documentElement.requestFullscreen();
+    }
+  }catch(e){
+    console.log("Fullscreen unavailable",e);
+  }
+
+  try{
+    if(screen.orientation?.lock){
+      
