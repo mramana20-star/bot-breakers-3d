@@ -747,13 +747,14 @@ function collectBolts(){
     if(!b.active)continue;
 
     for(const r of robots){
-      const distance=Math.hypot(
-        r.x-b.x,
-        r.y-b.y,
-        r.z-b.z
-      );
+const horizontalDistance=Math.hypot(
+  r.x-b.x,
+  r.z-b.z
+);
 
-      if(distance<1.25){
+const verticalDistance=Math.abs(r.y-b.y);
+
+if(horizontalDistance<2.0 && verticalDistance<2.5){
         r.score+=10;
         b.active=false;
         b.group.visible=false;
