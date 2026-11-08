@@ -625,8 +625,8 @@ function playerMovement(dt){
   const sin=Math.sin(cameraYaw);
   const cos=Math.cos(cameraYaw);
 
-  const moveX=side*cos+forward*sin;
-  const moveZ=-side*sin+forward*cos;
+const moveX=side*cos-forward*sin;
+const moveZ=-side*sin-forward*cos;
 
   const speed=(keys.shift||keys.dash)?15:8;
 
