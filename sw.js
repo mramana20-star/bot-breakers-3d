@@ -1,5 +1,5 @@
 
-const CACHE_NAME = "bot-breakers-v1";
+const CACHE_NAME = "bot-breakers-v2";
 
 const LOCAL_FILES = [
   "./",
