@@ -178,71 +178,170 @@ scene.add(sun);
 
 const clock = new THREE.Clock();
 
-/* ---------- ARENA ---------- */
+
+/* ---------- NEON FLOATING ARENA ---------- */
 
 const platforms=[];
 
 function makePlatform(x,y,z,w,d,color){
-  const mesh=new THREE.Mesh(
-    new THREE.BoxGeometry(w,0.8,d),
+  const base=new THREE.Mesh(
+    new THREE.BoxGeometry(w,.8,d),
     new THREE.MeshStandardMaterial({
-      color,metalness:.45,roughness:.35
+      color,
+      metalness:.55,
+      roughness:.28,
+      emissive:color,
+      emissiveIntensity:.12
     })
   );
-  mesh.position.set(x,y,z);
-  mesh.receiveShadow=true;
-  mesh.castShadow=true;
-  scene.add(mesh);
+
+  base.position.set(x,y,z);
+  base.receiveShadow=true;
+  base.castShadow=true;
+  scene.add(base);
 
   const edge=new THREE.Mesh(
-    new THREE.BoxGeometry(w+.15,.12,d+.15),
-    new THREE.MeshBasicMaterial({color:0x24cfff})
+    new THREE.BoxGeometry(w+.18,.12,d+.18),
+    new THREE.MeshBasicMaterial({color:0x43eaff})
   );
   edge.position.set(x,y+.43,z);
   scene.add(edge);
 
+  const grid=new THREE.GridHelper(
+    Math.max(w,d),Math.max(w,d),
+    0xff65ef,0x7c55ff
+  );
+  grid.scale.set(w/Math.max(w,d),1,d/Math.max(w,d));
+  grid.position.set(x,y+.42,z);
+  scene.add(grid);
+
   platforms.push({x,y:y+.4,z,w,d});
 }
 
-makePlatform(0,0,0,36,36,0x17294b);
+makePlatform(0,0,0,36,36,0x24204d);
 
-// Floating side platforms
-makePlatform(-24,-1,0,10,12,0x24304e);
-makePlatform(24,-1,0,10,12,0x24304e);
-makePlatform(0,-1,-24,12,10,0x24304e);
-makePlatform(0,-1,24,12,10,0x24304e);
+makePlatform(-24,-1,0,10,12,0x263b68);
+makePlatform(24,-1,0,10,12,0x263b68);
+makePlatform(0,-1,-24,12,10,0x263b68);
+makePlatform(0,-1,24,12,10,0x263b68);
 
-// Decorative arena pillars
-for(let i=0;i<12;i++){
-  const a=i*Math.PI/6;
-  const x=Math.cos(a)*19;
-  const z=Math.sin(a)*19;
-  const pillar=new THREE.Mesh(
-    new THREE.CylinderGeometry(.35,.6,5,8),
+// Floating neon towers
+const towerColors=[0xff42d6,0x25dcff,0x9c65ff,0x43ffb0];
+
+for(let i=0;i<20;i++){
+  const a=i*Math.PI*2/20;
+  const radius=23+Math.random()*5;
+  const x=Math.cos(a)*radius;
+  const z=Math.sin(a)*radius;
+  const h=3+Math.random()*9;
+
+  const tower=new THREE.Group();
+
+  const body=new THREE.Mesh(
+    new THREE.BoxGeometry(2,h,2),
     new THREE.MeshStandardMaterial({
-      color:0x176b9a,emissive:0x07334d
+      color:0x242d69,
+      metalness:.65,
+      roughness:.3,
+      emissive:0x25145e,
+      emissiveIntensity:.5
     })
   );
-  pillar.position.set(x,2,z);
-  scene.add(pillar);
+  body.position.y=h/2;
+  tower.add(body);
+
+  const stripe=new THREE.Mesh(
+    new THREE.BoxGeometry(2.08,.16,2.08),
+    new THREE.MeshBasicMaterial({
+      color:towerColors[i%towerColors.length]
+    })
+  );
+  stripe.position.y=h*.7;
+  tower.add(stripe);
+
+  tower.position.set(x,-.1,z);
+  scene.add(tower);
 }
 
-// Stars
+// Floating decorative blocks
+const floatingBlocks=[];
+
+for(let i=0;i<24;i++){
+  const size=.6+Math.random()*1.5;
+  const block=new THREE.Mesh(
+    new THREE.BoxGeometry(size,size,size),
+    new THREE.MeshStandardMaterial({
+      color:towerColors[i%4],
+      metalness:.5,
+      roughness:.25,
+      emissive:towerColors[i%4],
+      emissiveIntensity:.35
+    })
+  );
+
+  block.position.set(
+    (Math.random()-.5)*65,
+    5+Math.random()*18,
+    (Math.random()-.5)*65
+  );
+
+  block.rotation.set(
+    Math.random()*3,
+    Math.random()*3,
+    Math.random()*3
+  );
+
+  scene.add(block);
+  floatingBlocks.push(block);
+}
+
+// Glowing energy pillars
+for(let i=0;i<12;i++){
+  const a=i*Math.PI/6;
+  const x=Math.cos(a)*18;
+  const z=Math.sin(a)*18;
+
+  const pillar=new THREE.Mesh(
+    new THREE.CylinderGeometry(.12,.3,5,8),
+    new THREE.MeshBasicMaterial({
+      color:towerColors[i%4]
+    })
+  );
+
+  pillar.position.set(x,2.5,z);
+  scene.add(pillar);
+
+  const light=new THREE.PointLight(
+    towerColors[i%4],2,9
+  );
+  light.position.set(x,3,z);
+  scene.add(light);
+}
+
+// Star field
 const starGeometry=new THREE.BufferGeometry();
 const starPositions=[];
-for(let i=0;i<450;i++){
+
+for(let i=0;i<650;i++){
   starPositions.push(
     (Math.random()-.5)*150,
     Math.random()*65+5,
     (Math.random()-.5)*150
   );
 }
+
 starGeometry.setAttribute(
-  "position",new THREE.Float32BufferAttribute(starPositions,3)
+  "position",
+  new THREE.Float32BufferAttribute(starPositions,3)
 );
+
 const stars=new THREE.Points(
   starGeometry,
-  new THREE.PointsMaterial({color:0x9bdfff,size:.22})
+  new THREE.PointsMaterial({
+    color:0xe2d5ff,
+    size:.3,
+    sizeAttenuation:true
+  })
 );
 scene.add(stars);
 
