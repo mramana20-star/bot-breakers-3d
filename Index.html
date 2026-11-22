@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BOT BREAKERS 3D — Byteland Adventure</title>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#0d2b4e" />
+  <style>
+    :root {
+      --cyan: #4ef2ff;
+      --pink: #ff5ca8;
+      --gold: #ffd859;
+      --bg: #0c1f3f;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      color: #ffffff;
+      touch-action: none;
+    }
+
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* --- Clean Console-Style HUD (No Clutter, No Overlap) --- */
+    #hudTop {
+      position: fixed;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Top-left: Bot Avatar Emblem + Heart Lives */
+    .avatar-hud {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(10, 22, 52, 0.55);
+      border: 2px solid rgba(130, 235, 255, 0.75);
+      border-radius: 999px;
+      padding: 5px 16px 5px 6px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), 0 0 14px rgba(78, 242, 255, 0.25);
+    }
+
+    .avatar-circle {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4ef2ff, #6c5ce7);
+      border: 2.5px solid #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 13px;
+      color: #081833;
+      box-shadow: 0 0 10px rgba(78, 242, 255, 0.6);
+    }
+
+    .hearts-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .heart {
+      color: var(--pink);
+      text-shadow: 0 0 10px rgba(255, 92, 168, 0.85);
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .heart.empty {
+      color: rgba(255, 255, 255, 0.28);
+      text-shadow: none;
+    }
+
+    /* Compact Rescued Mini-Bots Display Dock */
+    #rescuedDock {
+      position: fixed;
+      top: 72px;
+      left: 16px;
+      display: flex;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(10, 22, 52, 0.52);
+      border: 1.5px solid rgba(130, 235, 255, 0.4);
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .bot-slot {
+      width: 24px;
+      height: 20px;
+      border-radius: 6px;
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 900;
+      color: rgba(255, 255, 255, 0.45);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      opacity: 0.45;
+    }
+
+    .bot-slot.found {
+      opacity: 1;
+      color: #081833;
+      border-color: #ffffff;
+      transform: scale(1.08);
+      box-shadow: 0 0 10px rgba(78, 242, 255, 0.7);
+    }
+
+    /* Top-right: Clean Collectible Counter + Compact Utility Buttons */
+    .hud-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .collect-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(10, 22, 52, 0.55);
+      border: 2px solid rgba(130, 235, 255, 0.65);
+      border-radius: 999px;
+      padding: 7px 16px;
+      backdrop-filter: blur(8px);
+      font-weight: 900;
+      font-size: 20px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .collect-icon {
+      color: var(--cyan);
+      font-size: 18px;
+    }
+
+    .rescue-pill {
+      font-size: 14px;
+      color: var(--gold);
+      border-color: rgba(255, 216, 89, 0.65);
+    }
+
+    .icon-btn {
+      pointer-events: auto;
+      cursor: pointer;
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1.5px solid rgba(255, 255, 255, 0.45);
+      background: rgba(10, 22, 52, 0.6);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      backdrop-filter: blur(8px);
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--cyan);
+      background: rgba(20, 44, 92, 0.8);
+    }
+
+    /* Subtle Bottom Hint */
+    #hintBar {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(10, 22, 52, 0.52);
+      border: 1px solid rgba(130, 235, 255, 0.35);
+      font-size: 12px;
+      font-weight: 700;
+      color: #d8f6ff;
+      pointer-events: none;
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    /* --- Start / Victory Overlay --- */
+    #message {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(16, 54, 96, 0.55), rgba(8, 16, 38, 0.84));
+      backdrop-filter: blur(6px);
+      z-index: 30;
+      padding: 18px;
+    }
+
+    #message.hidden {
+      display: none;
+    }
+
+    #messageBox {
+      max-width: 460px;
+      width: 100%;
+      background: linear-gradient(160deg, rgba(16, 34, 72, 0.95), rgba(32, 22, 74, 0.94));
+      border: 2.5px solid var(--cyan);
+      border-radius: 22px;
+      padding: 28px 26px;
+      text-align: center;
+      box-shadow: 0 0 42px rgba(78, 242, 255, 0.32);
+    }
+
+    #messageBox h1 {
+      margin: 0 0 8px 0;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      background: linear-gradient(90deg, #4ef2ff, #ffffff, #ffd859);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #messageBox p {
+      margin: 0 0 18px 0;
+      color: #d7ecff;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      text-align: left;
+      margin-bottom: 20px;
+      background: rgba(8, 16, 40, 0.55);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(78, 242, 255, 0.25);
+      font-size: 12px;
+    }
+
+    .controls-grid b {
+      color: var(--gold);
+    }
+
+    #playBtn {
+      cursor: pointer;
+      width: 100%;
+      padding: 14px 22px;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #071936;
+      background: linear-gradient(90deg, #4ef2ff, #ffd859);
+      box-shadow: 0 0 24px rgba(78, 242, 255, 0.5);
+      transition: transform 0.15s ease;
+    }
+
+    #playBtn:hover {
+      transform: translateY(-2px);
+    }
+
+    /* --- Clean Non-Overlapping Mobile Controls --- */
+    #mobileControls {
+      display: none;
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    @media (max-width: 900px) {
+      #mobileControls { display: block; }
+      #hintBar { display: none; }
+      .collect-pill { font-size: 16px; padding: 6px 12px; }
+    }
+
+    #joystick {
+      position: fixed;
+      bottom: 22px;
+      left: 22px;
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: rgba(78, 242, 255, 0.12);
+      border: 2px solid rgba(78, 242, 255, 0.55);
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    #stick {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 44px;
+      height: 44px;
+      margin-left: -22px;
+      margin-top: -22px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffffff, #4ef2ff);
+      box-shadow: 0 0 14px rgba(78, 242, 255, 0.8);
+    }
+
+    #lookArea {
+      position: fixed;
+      top: 72px;
+      right: 0;
+      bottom: 140px;
+      left: 42%;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    #actionButtons {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .m-btn {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: 2px solid rgba(78, 242, 255, 0.7);
+      background: rgba(12, 28, 64, 0.72);
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 11px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 0 14px rgba(78, 242, 255, 0.25);
+      touch-action: none;
+    }
+
+    .m-btn.active {
+      background: linear-gradient(135deg, #4ef2ff, #ff5ca8);
+      color: #081833;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="hudTop">
+    <div class="avatar-hud">
+      <div class="avatar-circle">BOTI</div>
+      <div class="hearts-row" id="heartsRow">
+        <span class="heart">&#9829;</span>
+        <span class="heart">&#9829;</span>
+        <span class="heart">&#9829;</span>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div class="collect-pill rescue-pill" title="Bots Rescued">
+        <span>&#9733;</span>
+        <span id="botsCount">0 / 6</span>
+      </div>
+      <div class="collect-pill" title="Time" style="font-size:15px;color:#ffd859;"><span id="timerText">0.0s</span></div>
+      <div class="collect-pill" title="Data Shards">
+        <span class="collect-icon">&#9670;</span>
+        <span id="shardCount">0</span>
+      </div>
+      <button class="icon-btn" id="soundBtn" type="button">SFX: ON</button>
+      <button class="icon-btn" id="fullscreen" type="button">FULL</button>
+    </div>
+  </div>
+
+  <div id="rescuedDock">
+    <div class="bot-slot" data-bot="0" style="--c:#4ef2ff">^ ^</div>
+    <div class="bot-slot" data-bot="1" style="--c:#00e699">^ ^</div>
+    <div class="bot-slot" data-bot="2" style="--c:#ff5ca8">^ ^</div>
+    <div class="bot-slot" data-bot="3" style="--c:#ffd859">^ ^</div>
+    <div class="bot-slot" data-bot="4" style="--c:#b388ff">^ ^</div>
+    <div class="bot-slot" data-bot="5" style="--c:#ff8a50">^ ^</div>
+  </div>
+
+  <div id="hintBar">WASD: Explore &bull; Space: Jump / Glide &bull; Shift: Dash &bull; E / Fire: Plasma (PvP) &bull; Drag: Look</div>
+
+  <div id="mobileControls">
+    <div id="joystick"><div id="stick"></div></div>
+    <div id="lookArea"></div>
+    <div id="actionButtons">
+      <button class="m-btn" id="jumpBtn" type="button">JUMP</button>
+      <button class="m-btn" id="fireBtn" type="button" style="border-color:#ff5ca8;">FIRE</button>
+      <button class="m-btn" id="dashBtn" type="button">DASH</button>
+          </div>
+  </div>
+
+  <div id="message">
+    <div id="messageBox">
+      <h1 id="msgTitle">BOT BREAKERS 3D</h1>
+      <p id="msgBody">Explore the open floating world of Byteland, climb crystal ridges, ride energy streams, and rescue 6 lost mini-bots—or battle rivals in PvP!</p>
+      <div class="controls-grid" id="controlsList">
+        <div><b>WASD</b> — Move &amp; Hover</div>
+        <div><b>Mouse Drag</b> — Camera</div>
+        <div><b>Space</b> — Jump / Glide</div>
+        <div><b>Shift</b> — Hover Dash</div>
+        <div><b>E</b> — Plasma Shot (PvP)</div>
+        <div><b>Goal</b> — Rescue 6 Bots</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button id="playBtn" type="button">ADVENTURE</button>
+        <button id="pvpBtn" type="button" style="cursor:pointer;width:100%;padding:14px 12px;border:none;border-radius:14px;font-size:15px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;color:#ffffff;background:linear-gradient(90deg,#ff3b9a,#7b2cbf);box-shadow:0 0 22px rgba(255,59,154,0.5);">PVP BRAWL</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+    // --- Synthesized Sound Effects ---
+    const audio = {
+      ctx: null,
+      enabled: true,
+      init() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+      },
+      tone(f1, f2, dur, type = 'triangle', vol = 0.12) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const t = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(f1, t);
+          osc.frequency.exponentialRampToValueAtTime(Math.max(40, f2), t + dur);
+          g.gain.setValueAtTime(vol, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+          osc.connect(g); g.connect(this.ctx.destination);
+          osc.start(t); osc.stop(t + dur);
+        } catch (_) {}
+      },
+      shard() { this.tone(660, 1320, 0.12, 'triangle', 0.12); },
+      rescue() { this.tone(523, 1046, 0.25, 'sine', 0.16); setTimeout(() => this.tone(784, 1568, 0.25, 'triangle', 0.14), 110); },
+      jump() { this.tone(280, 560, 0.14, 'sine', 0.1); },
+      bounce() { this.tone(320, 960, 0.24, 'triangle', 0.14); },
+      dash() { this.tone(240, 760, 0.18, 'sawtooth', 0.08); },
+      hurt() { this.tone(220, 90, 0.26, 'sawtooth', 0.14); },
+      shoot() { this.tone(920, 320, 0.11, 'square', 0.08); }
+    };
+
+    // --- Procedural Textures (Circuit Platform, CRT Visor, Soft Glow) ---
+    function makeCircuitPlateTexture(base = '#c4d4e8', line = '#7ea6cc') {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 256;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, 256, 256);
+
+      ctx.strokeStyle = line;
+      ctx.lineWidth = 3;
+      for (let i = 32; i < 256; i += 48) {
+        ctx.beginPath();
+        ctx.moveTo(0, i); ctx.lineTo(96, i); ctx.lineTo(120, i + 18); ctx.lineTo(256, i + 18);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(78, 242, 255, 0.45)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(6, 6, 244, 244);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function makeVisorTexture(style = 'happy') {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 176;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createRadialGradient(128, 88, 16, 128, 88, 150);
+      grad.addColorStop(0, '#f0ffff');
+      grad.addColorStop(0.6, '#a5f5ff');
+      grad.addColorStop(1, '#58cce8');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 176);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      for (let y = 0; y < 176; y += 7) ctx.fillRect(0, y, 256, 2);
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 15;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (style === 'happy') {
+        ctx.beginPath(); ctx.moveTo(54, 104); ctx.lineTo(84, 66); ctx.lineTo(114, 104); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(142, 104); ctx.lineTo(172, 66); ctx.lineTo(202, 104); ctx.stroke();
+      } else if (style === 'dots') {
+        ctx.beginPath(); ctx.arc(82, 86, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(174, 86, 16, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.moveTo(54, 68); ctx.lineTo(100, 86); ctx.lineTo(54, 104); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(144, 102); ctx.lineTo(174, 66); ctx.lineTo(204, 102); ctx.stroke();
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function makeSoftGlowTexture() {
+      const c = document.createElement('canvas');
+      c.width = 128; c.height = 128;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 62);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.4, 'rgba(78,242,255,0.65)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    // --- Renderer, Scene, Atmospheric Sky & Subtle Bloom ---
+    const canvas = document.getElementById('gameCanvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x163866, 0.0075);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 420);
+
+    let composer = null;
+    try {
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.25, 0.3, 0.86));
+      composer.addPass(new OutputPass());
+    } catch (_) {
+      composer = null;
+    }
+
+    // Luminous Teal-Cyan & Twilight-Violet Sky Dome (Astro Bot / Byteland look)
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      depthWrite: false,
+      uniforms: {
+        topColor: { value: new THREE.Color(0x0b254a) },
+        midColor: { value: new THREE.Color(0x165e8a) },
+        bottomColor: { value: new THREE.Color(0x52317a) }
+      },
+      vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+      fragmentShader: `uniform vec3 topColor, midColor, bottomColor; varying vec3 vW;
+        void main(){ float h=normalize(vW).y; vec3 c=mix(bottomColor,midColor,smoothstep(-0.2,0.2,h)); c=mix(c,topColor,smoothstep(0.2,0.85,h)); gl_FragColor=vec4(c,1.0); }`
+    });
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(250, 32, 24), skyMat));
+
+    // Soft Cartoon 3D Lighting
+    scene.add(new THREE.HemisphereLight(0xaef6ff, 0x3b2266, 0.95));
+    const sun = new THREE.DirectionalLight(0xfff7e8, 1.25);
+    sun.position.set(28, 52, 26);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.near = 5; sun.shadow.camera.far = 160;
+    sun.shadow.camera.left = -58; sun.shadow.camera.right = 58;
+    sun.shadow.camera.top = 58; sun.shadow.camera.bottom = -58;
+    scene.add(sun);
+
+    const rim = new THREE.DirectionalLight(0x4ef2ff, 0.65);
+    rim.position.set(-34, 20, -30);
+    scene.add(rim);
+
+    // Distant Stylized Cyber-City Monoliths (Soft Slate-Blue + Glowing Strips, No Black Void!)
+    for (let i = 0; i < 26; i++) {
+      const ang = (i / 26) * Math.PI * 2;
+      const dist = 68 + (i % 4) * 14;
+      const w = 8 + (i % 3) * 4;
+      const h = 34 + (i % 5) * 14;
+      const bGroup = new THREE.Group();
+      bGroup.position.set(Math.cos(ang) * dist, h / 2 - 24, Math.sin(ang) * dist);
